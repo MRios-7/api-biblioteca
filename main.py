@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Response
 from pydantic import BaseModel, Field
 
 app = FastAPI()
@@ -17,14 +17,22 @@ class LibroEntrada(BaseModel):
 class Libro(LibroEntrada):
     id: int
 
+
+class LibroPatch(BaseModel):
+    titulo: str | None = Field(default=None, min_length=3, max_length=100)
+    autor: str | None = Field(default=None, min_length=3, max_length=50)
+    anio: int | None = Field(default=None, strict=True, ge=1000, le=2100)
+    disponible: bool | None = None
+
 libros = []
+siguiente_id_libro = 1
 
 @app.get("/libros")
 def obtener_libros(
     autor: str | None = Query(default=None),
     disponible: bool | None = Query(default=None),
     desde: int = Query(default=0, ge=0),
-    limite: int = Query(default=10, ge=1, le=100)
+    limite: int = Query(default=100, ge=1, le=100)
 ):
     resultados = libros.copy()
 
@@ -45,6 +53,16 @@ def obtener_libros(
 
 @app.post("/libros", status_code=201)
 def agregar_libro(body: LibroEntrada):
+    for libro in libros:
+        if (
+            libro.titulo.lower() == body.titulo.lower()
+            and libro.autor.lower() == body.autor.lower()
+        ):
+            raise HTTPException(
+                status_code=409,
+                detail="Ya existe un libro con el mismo titulo y autor"
+            )
+
     nuevo_id = siguiente_id()
     nuevo_libro = Libro(id=nuevo_id, **body.model_dump())
     libros.append(nuevo_libro)
@@ -57,27 +75,16 @@ def obtener_libro(id: int):
             return libro
     raise HTTPException(status_code=404, detail="Libro no encontrado")
 
-@app.get("/libros/999")
-def obtener_libro_999():
-    for libro in libros:
-        if libro.id == 999:
-            return libro
-    raise HTTPException(status_code=404, detail="Libro con ID 999 no encontrado")
-
-@app.get("/libros/abc")
-def obtener_libro_abc():
-    raise HTTPException(status_code=422, detail="id que no es un número entero")
-
 @app.delete("/libros/{id}")
 def borrar_libro(id: int):
     for libro in libros:
         if libro.id == id:
             libros.remove(libro)
-            return {"mensaje": "Libro eliminado"}
+            return Response(status_code=200)
     raise HTTPException(status_code=404, detail="Libro no encontrado")
 
 @app.put("/libros/{id}")
-def actualizar_libro(id: int, body: LibroEntrada):
+def reemplazar_libro(id: int, body: LibroEntrada):
     for libro in libros:
         if libro.id == id:
             libro.titulo = body.titulo
@@ -86,7 +93,26 @@ def actualizar_libro(id: int, body: LibroEntrada):
             libro.disponible = body.disponible
             return libro
     raise HTTPException(status_code=404, detail="Libro no encontrado")
+
+
+@app.patch("/libros/{id}")
+def actualizar_libro(id: int, body: LibroPatch):
+    for libro in libros:
+        if libro.id == id:
+            if body.titulo is not None:
+                libro.titulo = body.titulo
+            if body.autor is not None:
+                libro.autor = body.autor
+            if body.anio is not None:
+                libro.anio = body.anio
+            if body.disponible is not None:
+                libro.disponible = body.disponible
+            return libro
+    raise HTTPException(status_code=404, detail="Libro no encontrado")
+
+
 def siguiente_id():
-    if not libros:
-        return 1
-    return max(libro.id for libro in libros) + 1
+    global siguiente_id_libro
+    nuevo_id = siguiente_id_libro
+    siguiente_id_libro += 1
+    return nuevo_id
