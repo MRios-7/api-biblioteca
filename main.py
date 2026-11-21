@@ -32,7 +32,7 @@ class LibroPatch(BaseModel):
 
 #Crea la carpeta de datos y carga los libros guardados
 CARPETA_DATOS = Path(__file__).parent / "datos"#Path hace que se ubique la carpeta de datos una carpeta arriba del main
-CARPETA_DATOS.mkdir(exist_ok=True)
+CARPETA_DATOS.mkdir(exist_ok=True)#exist_ok=True, hace que no de error si ya existe la carpeta
 ARCHIVO_LIBROS = CARPETA_DATOS / "libros.json" 
 
 def cargar_libros():
@@ -40,7 +40,8 @@ def cargar_libros():
         with ARCHIVO_LIBROS.open("r") as archivo:
             datos = json.load(archivo)
 
-        if not isinstance(datos, list):
+        if not isinstance(datos, list): #isinstance es como un if que revisa si el contenido es una lista de libros y ayuda a que
+                                        #inicie la aplicacion aunque el archivo este vacio o tenga un contenido incorrecto
             raise ValueError("El contenido debe ser una lista de libros")
 
         return [Libro(**item) for item in datos]
@@ -111,6 +112,16 @@ def agregar_libro(body: LibroEntrada):
     libros.append(nuevo_libro)
     guardar_datos()
     return nuevo_libro
+
+#Ruta para buscar libros por texto en el titulo o autor
+@app.get("/libros/buscar")
+def buscar_libros(texto: str = Query(...)):
+    texto_buscado = texto.lower()
+    return [
+        libro for libro in libros
+        if texto_buscado in libro.titulo.lower()
+        or texto_buscado in libro.autor.lower()
+    ]
 
 @app.get("/libros/{id}")
 def obtener_libro(id: int):
