@@ -1,0 +1,23 @@
+[
+    {
+        "id": 1,
+        "titulo": "Cien años de soledad",
+        "autor": "Gabriel García Márquez",
+        "anio": 1967,
+        "disponible": true
+    },
+    {
+        "id": 2,
+        "titulo": "1984",
+        "autor": "George Orwell",
+        "anio": 1949,
+        "disponible": true
+    },
+    {
+        "id": 3,
+        "titulo": "El gran Gatsby",
+        "autor": "F. Scott Fitzgerald",
+        "anio": 1925,
+        "disponible": true
+    }
+]
